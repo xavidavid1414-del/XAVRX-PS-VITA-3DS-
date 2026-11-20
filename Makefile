@@ -4,12 +4,12 @@ ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CC := arm-none-eabi-gcc
 HOST_CC := gcc
 ARCH := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
-CFLAGS := -g -Wall -Wextra -O2 -std=gnu11 -mword-relocations -ffunction-sections $(ARCH) -DARM11 -D_3DS -I$(ROOT)/include
+CFLAGS := -g -Wall -Wextra -O2 -std=gnu11 -mword-relocations -ffunction-sections $(ARCH) -DARM11 -D_3DS -I$(ROOT)/include -I$(DEVKITPRO)/libctru/include
 CXXFLAGS := $(CFLAGS) -fno-rtti -fno-exceptions
 ASFLAGS := $(ARCH)
 LDFLAGS := -specs=3dsx.specs -g $(ARCH)
 LIBS := -lctru
-LIBDIRS :=
+LIBDIRS := -L$(DEVKITPRO)/libctru/lib
 .PHONY: all clean test
 all:
 	@mkdir -p $(BUILD)
