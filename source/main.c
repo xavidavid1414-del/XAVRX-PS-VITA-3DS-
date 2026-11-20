@@ -3,18 +3,27 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <sys/stat.h>
 #include "vyron_config.h"
 #include "vita_elf.h"
 #include "vita_self.h"
 
 #define MAX_FILES 24
+#define MAX_NAME 128
+#define MAX_PATH 256
 #define MAX_FILE_SIZE (16u * 1024u * 1024u)
 
-static char files[MAX_FILES][128];
-static unsigned file_count;
-static unsigned selected_file;
-static char scan_message[96] = "Press Y to scan SD root.";
-static char inspect_message[128] = "Choose an ELF or SELF file and press A.";
+typedef struct {
+    char name[MAX_NAME];
+    int is_directory;
+} BrowserEntry;
+
+static BrowserEntry entries[MAX_FILES];
+static unsigned entry_count;
+static unsigned selected_entry;
+static char current_dir[MAX_PATH] = "sdmc:/";
+static char scan_message[96] = "Scanning SD card...";
+static char inspect_message[128] = "Select a file and press A.";
 
 static int has_extension(const char *name, const char *ext) {
     size_t n = strlen(name), e = strlen(ext), i;
@@ -28,33 +37,70 @@ static int has_extension(const char *name, const char *ext) {
     return 1;
 }
 
-static void scan_sd(void) {
-    DIR *dir = opendir("sdmc:/");
+static int make_path(char *out, size_t capacity, const char *name) {
+    int n = snprintf(out, capacity, "%s%s%s", current_dir,
+                     current_dir[strlen(current_dir) - 1] == '/' ? "" : "/", name);
+    return n >= 0 && (size_t)n < capacity;
+}
+
+static void scan_directory(void) {
+    DIR *dir = opendir(current_dir);
     struct dirent *entry;
-    file_count = 0;
-    selected_file = 0;
+    entry_count = 0;
+    selected_entry = 0;
     if (!dir) {
-        snprintf(scan_message, sizeof(scan_message), "Cannot open sdmc:/");
+        snprintf(scan_message, sizeof(scan_message), "Cannot open current folder.");
         return;
     }
-    while ((entry = readdir(dir)) != NULL && file_count < MAX_FILES) {
-        if (has_extension(entry->d_name, ".elf") ||
-            has_extension(entry->d_name, ".self")) {
-            snprintf(files[file_count], sizeof(files[file_count]), "%s", entry->d_name);
-            ++file_count;
-        }
+    while ((entry = readdir(dir)) != NULL && entry_count < MAX_FILES) {
+        char path[MAX_PATH];
+        struct stat st;
+        int is_dir;
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+        if (!make_path(path, sizeof(path), entry->d_name))
+            continue;
+        if (stat(path, &st) != 0)
+            continue;
+        is_dir = S_ISDIR(st.st_mode) ? 1 : 0;
+        if (!is_dir && !has_extension(entry->d_name, ".elf") &&
+            !has_extension(entry->d_name, ".self"))
+            continue;
+        snprintf(entries[entry_count].name, sizeof(entries[entry_count].name),
+                 "%s", entry->d_name);
+        entries[entry_count].is_directory = is_dir;
+        ++entry_count;
     }
     closedir(dir);
-    snprintf(scan_message, sizeof(scan_message), "%u ELF/SELF file(s) in SD root", file_count);
-    snprintf(inspect_message, sizeof(inspect_message), "Select a file and press A.");
+    snprintf(scan_message, sizeof(scan_message), "%u item(s) in this folder", entry_count);
+    snprintf(inspect_message, sizeof(inspect_message), "A: open folder or inspect ELF/SELF.");
+}
+
+static void go_parent_directory(void) {
+    size_t len;
+    char *last_slash;
+    if (strcmp(current_dir, "sdmc:/") == 0)
+        return;
+    len = strlen(current_dir);
+    while (len > 6 && current_dir[len - 1] == '/')
+        current_dir[--len] = '\0';
+    last_slash = strrchr(current_dir + 6, '/');
+    if (last_slash)
+        last_slash[1] = '\0';
+    else
+        strcpy(current_dir, "sdmc:/");
+    scan_directory();
 }
 
 static void inspect_selected(void) {
-    char path[160];
+    char path[MAX_PATH];
     FILE *fp;
     long length;
     unsigned char *data;
-    snprintf(path, sizeof(path), "sdmc:/%s", files[selected_file]);
+    if (!make_path(path, sizeof(path), entries[selected_entry].name)) {
+        snprintf(inspect_message, sizeof(inspect_message), "Selected path is too long.");
+        return;
+    }
     fp = fopen(path, "rb");
     if (!fp) {
         snprintf(inspect_message, sizeof(inspect_message), "Could not open selected file.");
@@ -66,7 +112,7 @@ static void inspect_selected(void) {
         snprintf(inspect_message, sizeof(inspect_message), "File too large or unreadable (max 16 MiB).");
         return;
     }
-    data = (unsigned char *)malloc((size_t)length);
+    data = (unsigned char *)malloc(length > 0 ? (size_t)length : 1u);
     if (!data) {
         fclose(fp);
         snprintf(inspect_message, sizeof(inspect_message), "Not enough memory to inspect file.");
@@ -80,7 +126,7 @@ static void inspect_selected(void) {
     }
     fclose(fp);
 
-    if (has_extension(files[selected_file], ".elf")) {
+    if (has_extension(entries[selected_entry].name, ".elf")) {
         VitaElfInfo info;
         VitaElfStatus status = vita_elf_parse_header(data, (size_t)length, &info);
         snprintf(inspect_message, sizeof(inspect_message), "ELF: %s", vita_elf_status_string(status));
@@ -90,6 +136,26 @@ static void inspect_selected(void) {
         snprintf(inspect_message, sizeof(inspect_message), "SELF: %s", vita_self_status_string(status));
     }
     free(data);
+}
+
+static void activate_selected(void) {
+    if (entry_count == 0)
+        return;
+    if (entries[selected_entry].is_directory) {
+        char next_path[MAX_PATH];
+        if (!make_path(next_path, sizeof(next_path), entries[selected_entry].name)) {
+            snprintf(inspect_message, sizeof(inspect_message), "Folder path is too long.");
+            return;
+        }
+        if (strlen(next_path) + 1 >= sizeof(current_dir)) {
+            snprintf(inspect_message, sizeof(inspect_message), "Folder path limit reached.");
+            return;
+        }
+        snprintf(current_dir, sizeof(current_dir), "%s/", next_path);
+        scan_directory();
+    } else {
+        inspect_selected();
+    }
 }
 
 static void draw_page(PrintConsole *top, PrintConsole *bottom, int page) {
@@ -129,21 +195,23 @@ static void draw_page(PrintConsole *top, PrintConsole *bottom, int page) {
         printf("- Segment offsets and lengths\n");
         printf("- Compression/encryption flags\n");
         break;
-    case 3:
-        printf("       SD CARD FILE BROWSER\n\n");
-        printf("%s\n\n", scan_message);
-        if (file_count == 0) {
-            printf("No ELF/SELF files found in SD root.\n");
+    case 3: {
+        unsigned start = selected_entry > 8 ? selected_entry - 8 : 0;
+        unsigned end = start + 17;
+        unsigned i;
+        printf("       SD CARD BROWSER\n\n");
+        printf("Folder: %s\n%s\n\n", current_dir, scan_message);
+        if (entry_count == 0) {
+            printf("No folders or ELF/SELF files here.\n");
         } else {
-            unsigned start = selected_file > 8 ? selected_file - 8 : 0;
-            unsigned end = start + 17;
-            unsigned i;
-            if (end > file_count) end = file_count;
+            if (end > entry_count) end = entry_count;
             for (i = start; i < end; ++i)
-                printf("%c %s\n", i == selected_file ? '>' : ' ', files[i]);
+                printf("%c %s%s\n", i == selected_entry ? '>' : ' ',
+                       entries[i].name, entries[i].is_directory ? "/" : "");
         }
         printf("\nResult: %s\n", inspect_message);
         break;
+    }
     default:
         printf("       PROJECT LIMITS\n\n");
         printf("This is NOT a Vita emulator.\n");
@@ -162,9 +230,10 @@ static void draw_page(PrintConsole *top, PrintConsole *bottom, int page) {
     printf("--------------------------------\n");
     printf("LEFT / RIGHT : Change page\n");
     if (page == 3) {
-        printf("UP / DOWN    : Select file\n");
-        printf("A            : Inspect file\n");
-        printf("Y            : Rescan SD root\n");
+        printf("UP / DOWN    : Select item\n");
+        printf("A            : Open / inspect\n");
+        printf("B            : Parent folder\n");
+        printf("Y            : Rescan folder\n");
     }
     printf("START        : Exit\n\n");
     printf("Page %d / 5\n", page + 1);
@@ -179,7 +248,7 @@ int main(void) {
     gfxInitDefault();
     consoleInit(GFX_TOP, &topScreen);
     consoleInit(GFX_BOTTOM, &bottomScreen);
-    scan_sd();
+    scan_directory();
 
     while (aptMainLoop()) {
         hidScanInput();
@@ -195,20 +264,23 @@ int main(void) {
             redraw = 1;
         }
         if (page == 3) {
-            if ((down & KEY_DOWN) && file_count > 0) {
-                selected_file = (selected_file + 1) % file_count;
+            if ((down & KEY_DOWN) && entry_count > 0) {
+                selected_entry = (selected_entry + 1) % entry_count;
                 redraw = 1;
-            } else if ((down & KEY_UP) && file_count > 0) {
-                selected_file = (selected_file + file_count - 1) % file_count;
+            } else if ((down & KEY_UP) && entry_count > 0) {
+                selected_entry = (selected_entry + entry_count - 1) % entry_count;
                 redraw = 1;
             }
             if (down & KEY_A) {
-                if (file_count > 0) inspect_selected();
-                else snprintf(inspect_message, sizeof(inspect_message), "No ELF/SELF file selected.");
+                activate_selected();
+                redraw = 1;
+            }
+            if (down & KEY_B) {
+                go_parent_directory();
                 redraw = 1;
             }
             if (down & KEY_Y) {
-                scan_sd();
+                scan_directory();
                 redraw = 1;
             }
         }
