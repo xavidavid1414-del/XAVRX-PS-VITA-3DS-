@@ -33,7 +33,7 @@ The 3DSX opens a dual-screen menu with five pages:
 4. SD-card browser
 5. Project limitations
 
-Use D-pad Left/Right to change pages. Press START to exit.
+Use **L/R shoulder buttons** to change pages. Press START to exit.
 
 ### SD-card browser
 
