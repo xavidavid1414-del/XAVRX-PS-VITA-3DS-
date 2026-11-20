@@ -11,14 +11,14 @@ Experimental research project for the New Nintendo 2DS XL. This is **not a funct
 - [x] Program-header and section-header table bounds checks
 - [x] PT_LOAD segment file-range, filesz/memsz, and alignment validation
 - [x] Enforce documented Vita program-header and segment-count limits
-- [x] Inspect the public 0x20-byte SCE SELF header and validate basic offsets
+- [x] Inspect the public 0x80-byte SCE SELF header and validate extended offsets
 - [x] Host tests for valid headers, truncated tables, and malformed load segments
 - [x] Verify 3DSX build and host tests in GitHub Actions
 - [x] Implement a conservative Vita SELF base-header inspector
 - [ ] Evaluate a limited ARM instruction experiment only if hardware budget permits
 - [ ] Benchmark memory and performance constraints
 
-The parser checks ELF identification, ELF version, 32-bit class, little-endian encoding, ARM machine type, supported Vita ELF types (ET_SCE_EXEC and ET_SCE_RELEXEC), header size, declared program/section table ranges, PT_LOAD segment file bounds, memory-size consistency, alignment, and documented Vita segment-count limits. It reads metadata only. The SELF inspector currently validates only the public base SCE header (magic, Vita header version, SELF type, metadata offset, embedded-ELF offset and size). It does not parse the extended Vita SELF metadata tables, decrypt content, verify signatures, or inspect compressed/encrypted segments. It does **not** decrypt SELF files, load segments, link libraries, emulate the Vita kernel, or execute Vita games.
+The parser checks ELF identification, ELF version, 32-bit class, little-endian encoding, ARM machine type, supported Vita ELF types (ET_SCE_EXEC and ET_SCE_RELEXEC), header size, declared program/section table ranges, PT_LOAD segment file bounds, memory-size consistency, alignment, and documented Vita segment-count limits. It reads metadata only. The SELF inspector validates the documented public 0x80-byte SCE header layout, including the separate header length, total SELF size, embedded-ELF offset/size, and bounds of public metadata offsets. It reports offsets but does not parse the referenced metadata structures, decrypt content, verify signatures, or inspect compressed/encrypted segments. It does **not** decrypt SELF files, load segments, link libraries, emulate the Vita kernel, or execute Vita games.
 
 ## Build on 3DS
 
