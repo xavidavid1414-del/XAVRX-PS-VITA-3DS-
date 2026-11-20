@@ -25,7 +25,7 @@ static unsigned selected_entry;
 static char current_dir[MAX_PATH] = "sdmc:/";
 static char scan_message[96] = "Scanning SD card...";
 static char inspect_message[128] = "Select a file and press A.";
-static char inspect_details[256] = "";
+static char inspect_details[768] = "";
 
 static int has_extension(const char *name, const char *ext) {
     size_t n = strlen(name), e = strlen(ext), i;
@@ -178,15 +178,32 @@ static void inspect_selected(void) {
         VitaSelfStatus status = vita_self_inspect_header(data, (size_t)length, &info);
         snprintf(inspect_message, sizeof(inspect_message), "SELF: %s", vita_self_status_string(status));
         if (status == VITA_SELF_OK) {
-            if (info.has_appinfo) {
-                snprintf(inspect_details, sizeof(inspect_details),
-                         "Segments: %u  App type: 0x%08lX\nAuth ID: 0x%016llX\nApp version: 0x%016llX",
-                         info.segment_count, (unsigned long)info.self_type,
-                         (unsigned long long)info.auth_id,
-                         (unsigned long long)info.app_version);
-            } else {
-                snprintf(inspect_details, sizeof(inspect_details),
-                         "Segments: %u\nNo AppInfo record present.", info.segment_count);
+            {
+                size_t used;
+                unsigned i;
+                if (info.has_appinfo) {
+                    snprintf(inspect_details, sizeof(inspect_details),
+                             "Segments: %u  App type: 0x%08lX\\nAuth ID: 0x%016llX\\nApp version: 0x%016llX",
+                             info.segment_count, (unsigned long)info.self_type,
+                             (unsigned long long)info.auth_id,
+                             (unsigned long long)info.app_version);
+                } else {
+                    snprintf(inspect_details, sizeof(inspect_details),
+                             "Segments: %u\\nNo AppInfo record present.", info.segment_count);
+                }
+                used = strlen(inspect_details);
+                for (i = 0; i < info.segment_count && used < sizeof(inspect_details) - 1; ++i) {
+                    int written = snprintf(inspect_details + used, sizeof(inspect_details) - used,
+                                            "\\nS%u off:%08llX len:%08llX C:%u E:%llu",
+                                            i,
+                                            (unsigned long long)info.segments[i].offset,
+                                            (unsigned long long)info.segments[i].length,
+                                            info.segments[i].compression,
+                                            (unsigned long long)info.segments[i].encryption);
+                    if (written < 0 || (size_t)written >= sizeof(inspect_details) - used)
+                        break;
+                    used += (size_t)written;
+                }
             }
         }
     }
