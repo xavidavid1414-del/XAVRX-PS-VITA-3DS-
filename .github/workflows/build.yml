@@ -18,6 +18,8 @@ jobs:
       image: devkitpro/devkitarm:latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Nintendo 3DS development libraries
+        run: dkp-pacman -S --noconfirm 3ds-dev
       - name: Build 3DSX
         run: |
           export PATH="$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH"
