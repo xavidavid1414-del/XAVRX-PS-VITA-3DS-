@@ -17,6 +17,8 @@ all:
 test:
 	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -I$(ROOT)/include $(ROOT)/tests/test_vita_elf.c $(ROOT)/source/vita_elf.c -o /tmp/xavrx_elf_tests
 	/tmp/xavrx_elf_tests
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -I$(ROOT)/include $(ROOT)/tests/test_vita_self.c $(ROOT)/source/vita_self.c -o /tmp/xavrx_self_tests
+	/tmp/xavrx_self_tests
 clean:
 	@rm -rf $(BUILD)
 .PHONY: build-local
