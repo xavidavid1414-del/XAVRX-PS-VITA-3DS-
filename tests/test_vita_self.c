@@ -39,13 +39,13 @@ static void make_self(uint8_t *data, size_t size) {
     put16(data + 0x100 + 42, 0x20);
     put16(data + 0x100 + 44, 1);
 
-    put64(data + 0xb0, 0x140);    /* segment data offset */
+    put64(data + 0xb0, 0x1100);    /* segment data offset */
     put64(data + 0xb8, 0x20);     /* segment stored length */
     put64(data + 0xc0, 1);        /* uncompressed */
     put64(data + 0xc8, 2);        /* plain / not encrypted */
 }
 int main(void) {
-    uint8_t data[512];
+    uint8_t data[0x1200];
     VitaSelfInfo info;
     make_self(data, sizeof data);
     assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_OK);
@@ -81,13 +81,13 @@ int main(void) {
     put64(data + 64, 0x1000);
     assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_ERR_ELF_RANGE);
     make_self(data, sizeof data);
-    put64(data + 56, 0x1f8);
+    put64(data + 56, 0x11f8);
     assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_ERR_OFFSET_RANGE);
     make_self(data, sizeof data);
-    put64(data + 72, 0x1f0); put64(data + 112, 0x20);
+    put64(data + 72, 0x11f0); put64(data + 112, 0x20);
     assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_ERR_OFFSET_RANGE);
     make_self(data, sizeof data);
-    put64(data + 0xb0, 0x1f8);
+    put64(data + 0xb0, 0x11f8);
     assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_ERR_SEGMENT_RANGE);
     make_self(data, sizeof data);
     put64(data + 0xc0, 9);
