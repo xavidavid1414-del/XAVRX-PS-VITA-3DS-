@@ -1,36 +1,34 @@
 # XAVRX PS Vita 3DS
 
-Experimental research project exploring whether a small, measurable subset of PlayStation Vita software behavior can be studied on the New Nintendo 2DS XL.
+Experimental research project for the New Nintendo 2DS XL. This is **not a functional PS Vita emulator**; full Vita emulation is beyond the practical capabilities of 3DS-family hardware.
 
-> **Status: early prototype scaffold. This is not a working PS Vita emulator.** Full PS Vita emulation on a New Nintendo 2DS XL is beyond the practical capabilities of the hardware. The Vita uses a substantially more powerful multi-core ARM platform, a dedicated GPU, and far more memory than the 3DS family.
+## Current milestone: ELF32 ARM header inspection
 
-## Current milestone
+- [x] devkitPro / libctru homebrew scaffold
+- [x] Basic top-screen status display and START-to-exit input loop
+- [x] ELF32 little-endian ARM header parser (metadata only)
+- [x] Host-side unit tests for valid and invalid ELF headers
+- [ ] Verify the 3DSX build in GitHub Actions
+- [ ] Research Vita SELF packaging and executable formats
+- [ ] Evaluate a strictly limited ARMv7 instruction experiment
+- [ ] Benchmark memory and performance constraints
 
-- [x] Initial devkitPro/libctru homebrew application scaffold
-- [x] Basic top-screen status display and input loop
-- [ ] Build verification on devkitPro
-- [ ] Research notes for Vita executable formats and system interfaces
-- [ ] Carefully scoped CPU / memory experiments
-- [ ] Compatibility tests using original, self-created test programs
+The parser checks ELF identification, 32-bit class, little-endian encoding, version, ARM machine type, and ELF header size. It reads entry-point and table metadata. It does **not** load, decrypt, link, or execute a Vita program.
 
-## Build
+## Build on 3DS
 
-Install devkitPro with the Nintendo 3DS development packages (`3ds-dev`), then run:
+Install devkitPro with the Nintendo 3DS development packages (3ds-dev) and run `make`.
 
-```sh
-make
-```
+This should produce `XAVRX-PS-VITA-3DS.3dsx`.
 
-The build should produce `XAVRX-PS-VITA-3DS.3dsx` and a `.cia` only if the corresponding packaging target is configured. The current Makefile builds a 3DSX homebrew application.
+## Run host parser tests
+
+With a C compiler, run `make test`.
 
 ## Project rules
 
-- Never label a stub, placeholder, or mock as an implemented Vita feature.
+- Never label stubs or metadata inspection as emulation.
 - Do not claim game compatibility without reproducible tests.
 - Do not include copyrighted Vita firmware, keys, or commercial game files.
-- Record hardware limitations and benchmark every new subsystem.
-- Prefer small, testable research milestones over claims of universal compatibility.
-
-## Current functionality
-
-The application initializes libctru graphics, displays project status, and exits when START is pressed. It does not load or execute PS Vita games.
+- Benchmark each subsystem on real hardware before making performance claims.
+- Document limitations and keep each milestone small and testable.
