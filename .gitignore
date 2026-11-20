@@ -1,0 +1,8 @@
+/build/
+/*.3dsx
+/*.3ds
+/*.cia
+/*.elf
+/*.map
+*.o
+*.d
