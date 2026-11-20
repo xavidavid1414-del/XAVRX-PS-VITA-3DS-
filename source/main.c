@@ -290,10 +290,10 @@ int main(void) {
 
         if (down & KEY_START)
             break;
-        if (down & KEY_RIGHT) {
+        if (down & KEY_R) {
             page = (page + 1) % 5;
             redraw = 1;
-        } else if (down & KEY_LEFT) {
+        } else if (down & KEY_L) {
             page = (page + 4) % 5;
             redraw = 1;
         }
