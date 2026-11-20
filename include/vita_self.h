@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define VITA_SELF_MAX_SEGMENTS 8u
+
 typedef enum {
     VITA_SELF_OK = 0,
     VITA_SELF_ERR_TOO_SMALL,
@@ -11,8 +13,18 @@ typedef enum {
     VITA_SELF_ERR_TYPE,
     VITA_SELF_ERR_HEADER_RANGE,
     VITA_SELF_ERR_ELF_RANGE,
-    VITA_SELF_ERR_OFFSET_RANGE
+    VITA_SELF_ERR_OFFSET_RANGE,
+    VITA_SELF_ERR_SEGMENT_TABLE,
+    VITA_SELF_ERR_SEGMENT_RANGE,
+    VITA_SELF_ERR_SEGMENT_FORMAT
 } VitaSelfStatus;
+
+typedef struct {
+    uint64_t offset;
+    uint64_t length;
+    uint64_t compression;
+    uint64_t encryption;
+} VitaSelfSegmentInfo;
 
 typedef struct {
     uint16_t flags;
@@ -34,10 +46,11 @@ typedef struct {
     uint32_t vendor_id;
     uint32_t self_type;
     uint64_t app_version;
+    uint16_t segment_count;
+    VitaSelfSegmentInfo segments[VITA_SELF_MAX_SEGMENTS];
 } VitaSelfInfo;
 
-/* Inspects the public 0x80-byte SCE header and bounded app-info record.
-   Does not parse protected metadata or decrypt content. */
+/* Metadata-only inspection. Never decrypts, decompresses, or executes segments. */
 VitaSelfStatus vita_self_inspect_header(const uint8_t *data, size_t size,
                                         VitaSelfInfo *out);
 const char *vita_self_status_string(VitaSelfStatus status);
