@@ -2,20 +2,22 @@
 
 Experimental research project for the New Nintendo 2DS XL. This is **not a functional PS Vita emulator**; full Vita emulation is beyond the practical capabilities of 3DS-family hardware.
 
-## Current milestone: ELF32 ARM metadata validation
+## Current milestone: Vita ELF32 metadata validation
 
 - [x] devkitPro / libctru homebrew scaffold
 - [x] Basic top-screen status display and START-to-exit input loop
 - [x] ELF32 little-endian ARM header validation
+- [x] Recognize Vita ET_SCE_EXEC and ET_SCE_RELEXEC executable types
 - [x] Program-header and section-header table bounds checks
 - [x] PT_LOAD segment file-range, filesz/memsz, and alignment validation
+- [x] Enforce documented Vita program-header and segment-count limits
 - [x] Host tests for valid headers, truncated tables, and malformed load segments
 - [x] Verify 3DSX build and host tests in GitHub Actions
-- [ ] Research documented Vita SELF container format
+- [ ] Implement a conservative Vita SELF container-header inspector
 - [ ] Evaluate a limited ARM instruction experiment only if hardware budget permits
 - [ ] Benchmark memory and performance constraints
 
-The parser checks ELF identification, ELF version, 32-bit class, little-endian encoding, ARM machine type, header size, declared program/section table ranges, and PT_LOAD segment file bounds, memory-size consistency, and alignment. It reads metadata only. It does **not** decrypt SELF files, load segments, link libraries, emulate the Vita kernel, or execute Vita games.
+The parser checks ELF identification, ELF version, 32-bit class, little-endian encoding, ARM machine type, supported Vita ELF types (ET_SCE_EXEC and ET_SCE_RELEXEC), header size, declared program/section table ranges, PT_LOAD segment file bounds, memory-size consistency, alignment, and documented Vita segment-count limits. It reads metadata only. The SELF container itself is not parsed yet. It does **not** decrypt SELF files, load segments, link libraries, emulate the Vita kernel, or execute Vita games.
 
 ## Build on 3DS
 
