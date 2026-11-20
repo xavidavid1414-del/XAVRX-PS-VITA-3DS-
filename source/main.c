@@ -183,22 +183,23 @@ static void inspect_selected(void) {
                 unsigned i;
                 if (info.has_appinfo) {
                     snprintf(inspect_details, sizeof(inspect_details),
-                             "Segments: %u  App type: 0x%08lX\\nAuth ID: 0x%016llX\\nApp version: 0x%016llX",
+                             "Segments: %u  App type: 0x%08lX\nAuth ID: 0x%016llX\nApp version: 0x%016llX",
                              info.segment_count, (unsigned long)info.self_type,
                              (unsigned long long)info.auth_id,
                              (unsigned long long)info.app_version);
                 } else {
                     snprintf(inspect_details, sizeof(inspect_details),
-                             "Segments: %u\\nNo AppInfo record present.", info.segment_count);
+                             "Segments: %u\nNo AppInfo record present.", info.segment_count);
                 }
                 used = strlen(inspect_details);
                 for (i = 0; i < info.segment_count && used < sizeof(inspect_details) - 1; ++i) {
                     int written = snprintf(inspect_details + used, sizeof(inspect_details) - used,
-                                            "\\nS%u off:%08llX len:%08llX C:%u E:%llu",
+                                            "\nS%u off:%08llX len:%08llX C:%u E:%llu",
                                             i,
                                             (unsigned long long)info.segments[i].offset,
                                             (unsigned long long)info.segments[i].length,
                                             info.segments[i].compression,
+                                            (unsigned long)info.segments[i].unknown,
                                             (unsigned long long)info.segments[i].encryption);
                     if (written < 0 || (size_t)written >= sizeof(inspect_details) - used)
                         break;
@@ -302,7 +303,7 @@ static void draw_page(PrintConsole *top, PrintConsole *bottom, int page) {
     consoleClear();
     printf("XAVRX PS VITA 3DS - MENU\n");
     printf("--------------------------------\n");
-    printf("LEFT / RIGHT : Change page\n");
+    printf("L / R        : Change page\n");
     if (page == 3) {
         printf("UP / DOWN    : Select item\n");
         printf("A            : Open / inspect\n");
