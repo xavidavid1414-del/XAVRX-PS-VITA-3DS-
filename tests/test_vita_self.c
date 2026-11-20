@@ -21,10 +21,15 @@ static void make_self(uint8_t *data, size_t size) {
     put16(data + 8, 0x00c0);
     put16(data + 10, 1);
     put32(data + 12, 0x80);
-    put64(data + 16, 0x80);       /* header length */
-    put64(data + 24, 0x40);       /* embedded ELF size */
-    put64(data + 32, size);       /* SELF file size */
-    put64(data + 64, 0xc0);      /* ELF offset, independent of header length */
+    put64(data + 16, 0x80);
+    put64(data + 24, 0x40);
+    put64(data + 32, size);
+    put64(data + 56, 0x90);       /* app-info record */
+    put64(data + 64, 0xc0);       /* embedded ELF offset */
+    put64(data + 0x90, 0x1122334455667788ULL);
+    put32(data + 0x98, 0x12345678);
+    put32(data + 0x9c, 2);
+    put64(data + 0xa0, 0x0102030405060708ULL);
 }
 int main(void) {
     uint8_t data[256];
@@ -36,6 +41,11 @@ int main(void) {
     assert(info.embedded_elf_size == 0x40);
     assert(info.flags == 0x00c0);
     assert(info.self_file_size == sizeof data);
+    assert(info.has_appinfo);
+    assert(info.auth_id == 0x1122334455667788ULL);
+    assert(info.vendor_id == 0x12345678);
+    assert(info.self_type == 2);
+    assert(info.app_version == 0x0102030405060708ULL);
     assert(vita_self_inspect_header(data, 0x7f, &info) == VITA_SELF_ERR_TOO_SMALL);
 
     data[0] = 0;
@@ -53,8 +63,11 @@ int main(void) {
     put64(data + 64, 0x1000);
     assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_ERR_ELF_RANGE);
     make_self(data, sizeof data);
+    put64(data + 56, 0xf0);
+    assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_ERR_OFFSET_RANGE);
+    make_self(data, sizeof data);
     put64(data + 72, 0xf0); put64(data + 112, 0x20);
     assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_ERR_OFFSET_RANGE);
-    puts("Vita SELF extended-header tests: PASS");
+    puts("Vita SELF app-info tests: PASS");
     return 0;
 }
