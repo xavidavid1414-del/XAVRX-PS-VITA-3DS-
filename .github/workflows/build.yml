@@ -24,4 +24,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: xavrx-ps-vita-3ds
-          path: XAVRX-PS-VITA-3DS.3dsx
+          path: build/XAVRX-PS-VITA-3DS.3dsx
