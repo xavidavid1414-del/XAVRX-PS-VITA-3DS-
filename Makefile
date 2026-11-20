@@ -1,35 +1,30 @@
 TARGET := XAVRX-PS-VITA-3DS
 BUILD := build
-SOURCES := source
-INCLUDES := include
+ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 ARCH := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
-CFLAGS := -g -Wall -Wextra -O2 -std=gnu11 -mword-relocations -ffunction-sections $(ARCH) -DARM11 -D_3DS
-CFLAGS += $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir))
+CFLAGS := -g -Wall -Wextra -O2 -std=gnu11 -mword-relocations -ffunction-sections $(ARCH) -DARM11 -D_3DS -I$(ROOT)/include
 CXXFLAGS := $(CFLAGS) -fno-rtti -fno-exceptions
 ASFLAGS := $(ARCH)
-LDFLAGS := -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+LDFLAGS := -specs=3dsx.specs -g $(ARCH)
 LIBS := -lctru
 LIBDIRS :=
 .PHONY: all clean test
-test:
-	$(CC) -std=c11 -Wall -Wextra -Werror -Iinclude tests/test_vita_elf.c source/vita_elf.c -o /tmp/xavrx_elf_tests
-	/tmp/xavrx_elf_tests
-ifneq ($(BUILD),$(notdir $(CURDIR)))
 all:
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+	@mkdir -p $(BUILD)
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(ROOT)/Makefile build-local
+test:
+	$(CC) -std=c11 -Wall -Wextra -Werror -I$(ROOT)/include $(ROOT)/tests/test_vita_elf.c $(ROOT)/source/vita_elf.c -o /tmp/xavrx_elf_tests
+	/tmp/xavrx_elf_tests
 clean:
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile clean
-else
-SOURCES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(CURDIR)/$(dir)/*.c)))
-CFILES := $(filter %.c,$(SOURCES))
-OFILES := $(CFILES:.c=.o)
-all: $(TARGET).3dsx
-%.o: $(CURDIR)/source/%.c
+	@rm -rf $(BUILD)
+.PHONY: build-local
+build-local:
+$(eval SOURCES := $(notdir $(wildcard $(ROOT)/source/*.c)))
+$(eval OFILES := $(SOURCES:.c=.o))
+build-local: $(TARGET).3dsx
+%.o: $(ROOT)/source/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 $(TARGET).elf: $(OFILES)
 	$(CC) $(LDFLAGS) $(OFILES) $(LIBDIRS) $(LIBS) -o $@
 $(TARGET).3dsx: $(TARGET).elf
 	3dsxtool $< $@
-clean:
-	@rm -f $(OFILES) $(TARGET).elf $(TARGET).3dsx $(TARGET).smdh
-endif
