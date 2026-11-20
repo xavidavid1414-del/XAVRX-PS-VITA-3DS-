@@ -17,6 +17,7 @@ Experimental research project for the New Nintendo 2DS XL. This is **not a funct
 - [x] GitHub Actions host tests and 3DSX build
 - [x] On-device project, ELF, SELF, SD browser, and limitations pages
 - [x] Read-only SD browser with folder navigation and ELF/SELF inspection
+- [x] Display SELF segment offsets, lengths, compression, and encryption metadata
 - [x] Stable alphabetical selection of the first 24 matching entries in large folders
 
 The ELF parser checks identification, version, 32-bit class, little-endian encoding, ARM machine type, supported Vita ELF types, header size, program/section table bounds, PT_LOAD file bounds, memory-size consistency, alignment, and documented Vita segment-count limits.
@@ -46,7 +47,7 @@ The browser lists directories and files ending in `.elf` or `.self` in the curre
 
 It scans the whole current directory, then displays at most 24 entries, prioritizing directories and sorting names alphabetically without case sensitivity. If more than 24 entries match, the interface reports the total and the number displayed. Folder navigation is manual; it does not recursively scan the entire SD card.
 
-Inspection is read-only and limited to files no larger than 16 MiB. Files are passed to the existing metadata validators and are never executed, decrypted, decompressed, or modified.
+Inspection is read-only and limited to files no larger than 16 MiB. Files are passed to the existing metadata validators. Valid SELF files also display each segment's stored offset, length, compression value, and encryption value. Files are never executed, decrypted, decompressed, or modified.
 
 ## Build on 3DS
 
