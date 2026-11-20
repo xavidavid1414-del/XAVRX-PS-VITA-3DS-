@@ -17,7 +17,10 @@ static int optional_offset_in_range(uint64_t offset, uint64_t file_size) {
 VitaSelfStatus vita_self_inspect_header(const uint8_t *data, size_t size,
                                         VitaSelfInfo *out) {
     uint64_t file_size, elf_offset, elf_size, control_offset, control_size;
-    uint64_t header_length, metadata_offset, appinfo_offset;
+    uint64_t header_length, metadata_offset, appinfo_offset, section_info_offset;
+    uint16_t phnum, phentsize;
+    size_t i;
+
     if (data == 0 || out == 0 || size < 0x80u)
         return VITA_SELF_ERR_TOO_SMALL;
     if (data[0] != 0x53 || data[1] != 0x43 ||
@@ -34,6 +37,7 @@ VitaSelfStatus vita_self_inspect_header(const uint8_t *data, size_t size,
     metadata_offset = read_u32le(data + 0x0c);
     appinfo_offset = read_u64le(data + 0x38);
     elf_offset = read_u64le(data + 0x40);
+    section_info_offset = read_u64le(data + 0x58);
     control_offset = read_u64le(data + 0x68);
     control_size = read_u64le(data + 0x70);
 
@@ -50,12 +54,25 @@ VitaSelfStatus vita_self_inspect_header(const uint8_t *data, size_t size,
         !optional_offset_in_range(appinfo_offset, file_size) ||
         !optional_offset_in_range(read_u64le(data + 0x48), file_size) ||
         !optional_offset_in_range(read_u64le(data + 0x50), file_size) ||
-        !optional_offset_in_range(read_u64le(data + 0x58), file_size) ||
+        !optional_offset_in_range(section_info_offset, file_size) ||
         !optional_offset_in_range(read_u64le(data + 0x60), file_size))
         return VITA_SELF_ERR_OFFSET_RANGE;
     if (appinfo_offset != 0 &&
         (appinfo_offset > file_size || 0x20u > file_size - appinfo_offset))
         return VITA_SELF_ERR_OFFSET_RANGE;
+
+    if (elf_size < 0x34u || data[elf_offset] != 0x7f ||
+        data[elf_offset + 1] != 'E' || data[elf_offset + 2] != 'L' ||
+        data[elf_offset + 3] != 'F' || data[elf_offset + 4] != 1u ||
+        data[elf_offset + 5] != 1u)
+        return VITA_SELF_ERR_SEGMENT_TABLE;
+    phentsize = read_u16le(data + elf_offset + 42);
+    phnum = read_u16le(data + elf_offset + 44);
+    if (phentsize != 0x20u || phnum > VITA_SELF_MAX_SEGMENTS)
+        return VITA_SELF_ERR_SEGMENT_TABLE;
+    if (section_info_offset > file_size ||
+        (uint64_t)phnum * 0x20u > file_size - section_info_offset)
+        return VITA_SELF_ERR_SEGMENT_TABLE;
 
     out->flags = read_u16le(data + 0x08);
     out->metadata_offset = (uint32_t)metadata_offset;
@@ -67,7 +84,7 @@ VitaSelfStatus vita_self_inspect_header(const uint8_t *data, size_t size,
     out->appinfo_offset = appinfo_offset;
     out->program_headers_offset = read_u64le(data + 0x48);
     out->section_headers_offset = read_u64le(data + 0x50);
-    out->section_info_offset = read_u64le(data + 0x58);
+    out->section_info_offset = section_info_offset;
     out->sce_version_offset = read_u64le(data + 0x60);
     out->control_info_offset = control_offset;
     out->control_info_size = control_size;
@@ -76,12 +93,28 @@ VitaSelfStatus vita_self_inspect_header(const uint8_t *data, size_t size,
     out->vendor_id = out->has_appinfo ? read_u32le(data + appinfo_offset + 8) : 0;
     out->self_type = out->has_appinfo ? read_u32le(data + appinfo_offset + 12) : 0;
     out->app_version = out->has_appinfo ? read_u64le(data + appinfo_offset + 16) : 0;
+    out->segment_count = phnum;
+
+    for (i = 0; i < phnum; ++i) {
+        const uint8_t *entry = data + section_info_offset + i * 0x20u;
+        VitaSelfSegmentInfo *segment = &out->segments[i];
+        segment->offset = read_u64le(entry);
+        segment->length = read_u64le(entry + 8);
+        segment->compression = read_u64le(entry + 16);
+        segment->encryption = read_u64le(entry + 24);
+        if (segment->offset > file_size ||
+            segment->length > file_size - segment->offset)
+            return VITA_SELF_ERR_SEGMENT_RANGE;
+        if ((segment->compression != 1u && segment->compression != 2u) ||
+            (segment->encryption != 1u && segment->encryption != 2u))
+            return VITA_SELF_ERR_SEGMENT_FORMAT;
+    }
     return VITA_SELF_OK;
 }
 
 const char *vita_self_status_string(VitaSelfStatus status) {
     switch (status) {
-    case VITA_SELF_OK: return "Valid Vita SELF header and public app-info";
+    case VITA_SELF_OK: return "Valid Vita SELF header, app-info, and segment metadata";
     case VITA_SELF_ERR_TOO_SMALL: return "SELF extended header is truncated";
     case VITA_SELF_ERR_MAGIC: return "Not an SCE SELF container";
     case VITA_SELF_ERR_VERSION: return "Unsupported SCE header version";
@@ -89,6 +122,9 @@ const char *vita_self_status_string(VitaSelfStatus status) {
     case VITA_SELF_ERR_HEADER_RANGE: return "SELF header or file-size field is invalid";
     case VITA_SELF_ERR_ELF_RANGE: return "Embedded ELF range exceeds the SELF file";
     case VITA_SELF_ERR_OFFSET_RANGE: return "A public SELF metadata offset or app-info record is outside the file";
+    case VITA_SELF_ERR_SEGMENT_TABLE: return "Embedded ELF program-header or segment-info table is invalid";
+    case VITA_SELF_ERR_SEGMENT_RANGE: return "A SELF segment range exceeds the file";
+    case VITA_SELF_ERR_SEGMENT_FORMAT: return "Unsupported SELF compression or encryption metadata value";
     default: return "Unknown SELF header error";
     }
 }
