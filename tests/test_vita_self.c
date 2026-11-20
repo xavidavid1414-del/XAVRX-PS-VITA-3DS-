@@ -24,7 +24,7 @@ static void make_self(uint8_t *data, size_t size) {
     put64(data + 16, 0x80);       /* header length */
     put64(data + 24, 0x40);       /* embedded ELF size */
     put64(data + 32, size);       /* SELF file size */
-    put64(data + 64, 0x100);      /* ELF offset, independent of header length */
+    put64(data + 64, 0xc0);      /* ELF offset, independent of header length */
 }
 int main(void) {
     uint8_t data[256];
@@ -32,7 +32,7 @@ int main(void) {
     make_self(data, sizeof data);
     assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_OK);
     assert(info.header_length == 0x80);
-    assert(info.embedded_elf_offset == 0x100);
+    assert(info.embedded_elf_offset == 0xc0);
     assert(info.embedded_elf_size == 0x40);
     assert(info.flags == 0x00c0);
     assert(info.self_file_size == sizeof data);
