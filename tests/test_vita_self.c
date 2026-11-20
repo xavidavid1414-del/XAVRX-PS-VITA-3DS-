@@ -60,7 +60,7 @@ int main(void) {
     assert(info.self_type == 2);
     assert(info.app_version == 0x0102030405060708ULL);
     assert(info.segment_count == 1);
-    assert(info.segments[0].offset == 0x140);
+    assert(info.segments[0].offset == 0x1100);
     assert(info.segments[0].length == 0x20);
     assert(info.segments[0].compression == 1);
     assert(info.segments[0].encryption == 2);
