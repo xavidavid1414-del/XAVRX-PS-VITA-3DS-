@@ -20,6 +20,7 @@ typedef struct {
 
 static BrowserEntry entries[MAX_FILES];
 static unsigned entry_count;
+static unsigned total_entries;
 static unsigned selected_entry;
 static char current_dir[MAX_PATH] = "sdmc:/";
 static char scan_message[96] = "Scanning SD card...";
@@ -66,12 +67,13 @@ static void scan_directory(void) {
     DIR *dir = opendir(current_dir);
     struct dirent *entry;
     entry_count = 0;
+    total_entries = 0;
     selected_entry = 0;
     if (!dir) {
         snprintf(scan_message, sizeof(scan_message), "Cannot open current folder.");
         return;
     }
-    while ((entry = readdir(dir)) != NULL && entry_count < MAX_FILES) {
+    while ((entry = readdir(dir)) != NULL) {
         char path[MAX_PATH];
         struct stat st;
         int is_dir;
@@ -85,14 +87,26 @@ static void scan_directory(void) {
         if (!is_dir && !has_extension(entry->d_name, ".elf") &&
             !has_extension(entry->d_name, ".self"))
             continue;
-        snprintf(entries[entry_count].name, sizeof(entries[entry_count].name),
-                 "%s", entry->d_name);
-        entries[entry_count].is_directory = is_dir;
-        ++entry_count;
+        {
+            BrowserEntry candidate;
+            snprintf(candidate.name, sizeof(candidate.name), "%s", entry->d_name);
+            candidate.is_directory = is_dir;
+            ++total_entries;
+            if (entry_count < MAX_FILES) {
+                entries[entry_count++] = candidate;
+                qsort(entries, entry_count, sizeof(entries[0]), compare_entries);
+            } else if (compare_entries(&candidate, &entries[MAX_FILES - 1]) < 0) {
+                entries[MAX_FILES - 1] = candidate;
+                qsort(entries, entry_count, sizeof(entries[0]), compare_entries);
+            }
+        }
     }
     closedir(dir);
-    qsort(entries, entry_count, sizeof(entries[0]), compare_entries);
-    snprintf(scan_message, sizeof(scan_message), "%u item(s) in this folder", entry_count);
+    if (total_entries > entry_count)
+        snprintf(scan_message, sizeof(scan_message), "Showing %u of %u items (limit %u)",
+                 entry_count, total_entries, MAX_FILES);
+    else
+        snprintf(scan_message, sizeof(scan_message), "%u item(s) in this folder", entry_count);
     snprintf(inspect_message, sizeof(inspect_message), "A: open folder or inspect ELF/SELF.");
 }
 
