@@ -100,7 +100,8 @@ VitaSelfStatus vita_self_inspect_header(const uint8_t *data, size_t size,
         VitaSelfSegmentInfo *segment = &out->segments[i];
         segment->offset = read_u64le(entry);
         segment->length = read_u64le(entry + 8);
-        segment->compression = read_u64le(entry + 16);
+        segment->compression = read_u32le(entry + 16);
+        segment->unknown = read_u32le(entry + 20);
         segment->encryption = read_u64le(entry + 24);
         if (segment->offset > file_size ||
             segment->length > file_size - segment->offset)
