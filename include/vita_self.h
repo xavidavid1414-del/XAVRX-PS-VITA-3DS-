@@ -29,10 +29,15 @@ typedef struct {
     uint64_t sce_version_offset;
     uint64_t control_info_offset;
     uint64_t control_info_size;
+    int has_appinfo;
+    uint64_t auth_id;
+    uint32_t vendor_id;
+    uint32_t self_type;
+    uint64_t app_version;
 } VitaSelfInfo;
 
-/* Inspects the documented public 0x80-byte SCE header layout.
-   Reports offsets only; does not parse protected metadata or decrypt content. */
+/* Inspects the public 0x80-byte SCE header and bounded app-info record.
+   Does not parse protected metadata or decrypt content. */
 VitaSelfStatus vita_self_inspect_header(const uint8_t *data, size_t size,
                                         VitaSelfInfo *out);
 const char *vita_self_status_string(VitaSelfStatus status);
