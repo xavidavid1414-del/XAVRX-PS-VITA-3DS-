@@ -8,10 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Test ELF parser
-        run: |
-          gcc -std=c11 -Wall -Wextra -Werror -Iinclude tests/test_vita_elf.c source/vita_elf.c -o /tmp/xavrx_elf_tests
-          /tmp/xavrx_elf_tests
+      - name: Test ELF and SELF inspectors
+        run: make test
   build-3ds:
     runs-on: ubuntu-latest
     container:
