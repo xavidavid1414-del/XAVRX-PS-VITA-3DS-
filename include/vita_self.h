@@ -22,7 +22,8 @@ typedef enum {
 typedef struct {
     uint64_t offset;
     uint64_t length;
-    uint64_t compression;
+    uint32_t compression;
+    uint32_t unknown;
     uint64_t encryption;
 } VitaSelfSegmentInfo;
 
