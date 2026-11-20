@@ -18,16 +18,22 @@ static int table_fits(uint32_t offset, uint16_t entry_size, uint16_t count,
 static int is_power_of_two(uint32_t value) {
     return value != 0 && (value & (value - 1u)) == 0;
 }
-static int validate_load_segments(const uint8_t *data, size_t size,
-                                  uint32_t offset, uint16_t entry_size,
-                                  uint16_t count, uint16_t *load_count) {
+static int validate_segments(const uint8_t *data, size_t size,
+                             uint32_t offset, uint16_t entry_size,
+                             uint16_t count, uint16_t *load_count,
+                             uint16_t *reloc_count) {
     uint16_t i;
     *load_count = 0;
+    *reloc_count = 0;
     for (i = 0; i < count; ++i) {
         const uint8_t *ph = data + offset + (uint32_t)i * entry_size;
         uint32_t type = read_u32le(ph);
         uint32_t file_offset, virtual_address, file_size, memory_size, alignment;
         uint64_t file_end;
+        if (type == 0x60000000u) {
+            ++(*reloc_count); /* PT_SCE_RELA */
+            continue;
+        }
         if (type != 1u) continue; /* PT_LOAD */
         file_offset = read_u32le(ph + 4);
         virtual_address = read_u32le(ph + 8);
@@ -44,7 +50,8 @@ static int validate_load_segments(const uint8_t *data, size_t size,
     return 1;
 }
 VitaElfStatus vita_elf_parse_header(const uint8_t *data, size_t size, VitaElfInfo *out) {
-    uint16_t ehsize, phentsize, phnum, shentsize, shnum, load_count;
+    uint16_t ehsize, phentsize, phnum, shentsize, shnum, load_count, reloc_count;
+    uint16_t elf_type;
     uint32_t phoff, shoff;
     if (data == 0 || out == 0 || size < 52) return VITA_ELF_ERR_TOO_SMALL;
     if (data[0] != 0x7f || data[1] != 'E' || data[2] != 'L' || data[3] != 'F')
@@ -53,6 +60,8 @@ VitaElfStatus vita_elf_parse_header(const uint8_t *data, size_t size, VitaElfInf
     if (data[5] != 1) return VITA_ELF_ERR_ENDIAN;
     if (data[6] != 1 || read_u32le(data + 20) != 1) return VITA_ELF_ERR_VERSION;
     if (read_u16le(data + 18) != 40) return VITA_ELF_ERR_MACHINE;
+    elf_type = read_u16le(data + 16);
+    if (elf_type != 0xfe00u && elf_type != 0xfe04u) return VITA_ELF_ERR_TYPE;
     ehsize = read_u16le(data + 40);
     if (ehsize < 52 || ehsize > size) return VITA_ELF_ERR_HEADER_SIZE;
     phoff = read_u32le(data + 28);
@@ -65,21 +74,28 @@ VitaElfStatus vita_elf_parse_header(const uint8_t *data, size_t size, VitaElfInf
         return VITA_ELF_ERR_PROGRAM_TABLE;
     if (!table_fits(shoff, shentsize, shnum, size, 40))
         return VITA_ELF_ERR_SECTION_TABLE;
-    if (!validate_load_segments(data, size, phoff, phentsize, phnum, &load_count))
+    if (!validate_segments(data, size, phoff, phentsize, phnum,
+                           &load_count, &reloc_count))
         return VITA_ELF_ERR_LOAD_SEGMENT;
+    if ((elf_type == 0xfe00u && phnum > 5u) ||
+        (elf_type == 0xfe04u && phnum > 8u) ||
+        load_count > 3u || reloc_count > 3u)
+        return VITA_ELF_ERR_VITA_LIMIT;
     out->entry = read_u32le(data + 24);
     out->program_header_offset = phoff;
     out->section_header_offset = shoff;
+    out->elf_type = elf_type;
     out->program_header_entry_size = phentsize;
     out->program_header_count = phnum;
     out->section_header_entry_size = shentsize;
     out->section_header_count = shnum;
     out->load_segment_count = load_count;
+    out->relocation_segment_count = reloc_count;
     return VITA_ELF_OK;
 }
 const char *vita_elf_status_string(VitaElfStatus status) {
     switch (status) {
-    case VITA_ELF_OK: return "Valid ELF32 ARM header and load segment bounds";
+    case VITA_ELF_OK: return "Valid Vita ELF header and segment metadata";
     case VITA_ELF_ERR_TOO_SMALL: return "File/header too small";
     case VITA_ELF_ERR_MAGIC: return "Invalid ELF magic";
     case VITA_ELF_ERR_CLASS: return "Not ELF32";
@@ -90,6 +106,8 @@ const char *vita_elf_status_string(VitaElfStatus status) {
     case VITA_ELF_ERR_PROGRAM_TABLE: return "Program header table is invalid or out of bounds";
     case VITA_ELF_ERR_SECTION_TABLE: return "Section header table is invalid or out of bounds";
     case VITA_ELF_ERR_LOAD_SEGMENT: return "Invalid PT_LOAD segment bounds or alignment";
+    case VITA_ELF_ERR_TYPE: return "Unsupported Vita ELF type";
+    case VITA_ELF_ERR_VITA_LIMIT: return "Vita program-header or segment limit exceeded";
     default: return "Unknown ELF parser error";
     }
 }
