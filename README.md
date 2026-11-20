@@ -5,7 +5,7 @@ Experimental research project for the New Nintendo 2DS XL. This is **not a funct
 ## Current milestone: Vita ELF and SELF header inspection
 
 - [x] devkitPro / libctru homebrew scaffold
-- [x] Dual-screen homebrew interface with four navigable information pages
+- [x] Dual-screen homebrew interface with five navigable information pages
 - [x] ELF32 little-endian ARM header validation
 - [x] Recognize Vita ET_SCE_EXEC and ET_SCE_RELEXEC executable types
 - [x] Program-header and section-header table bounds checks
@@ -14,7 +14,7 @@ Experimental research project for the New Nintendo 2DS XL. This is **not a funct
 - [x] Inspect the public 0x80-byte SCE SELF header and validate extended offsets
 - [x] Host tests for valid headers, truncated tables, and malformed load segments
 - [x] Verify 3DSX build and host tests in GitHub Actions
-- [x] Add on-device project, ELF, SELF, and limitations pages
+- [x] Add on-device project, ELF, SELF, SD browser, and limitations pages
 - [x] Implement a conservative Vita SELF base-header inspector
 - [ ] Evaluate a limited ARM instruction experiment only if hardware budget permits
 - [ ] Benchmark memory and performance constraints
@@ -47,3 +47,8 @@ The current 3DSX opens a dual-screen information menu:
 - **START:** exit to the Homebrew Launcher.
 
 This build is currently an information interface plus host-side metadata parsers. It does not yet browse or open files from the SD card. The next practical milestone is a read-only SD-card file browser that can pass selected ELF/SELF files to the existing validators.
+
+
+## SD-card file browser
+
+The on-device browser scans the SD-card root for up to 24 files ending in `.elf` or `.self`. Use D-pad Up/Down to select, A to inspect, and Y to rescan. Inspection is read-only and limited to files no larger than 16 MiB; the selected file is passed to the existing metadata validator and is never executed, decrypted, or modified. This first version does not recurse into subdirectories.
