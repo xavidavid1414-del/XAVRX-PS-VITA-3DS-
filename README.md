@@ -52,3 +52,8 @@ This build is currently an information interface plus host-side metadata parsers
 ## SD-card file browser
 
 The on-device browser scans the SD-card root for up to 24 files ending in `.elf` or `.self`. Use D-pad Up/Down to select, A to inspect, and Y to rescan. Inspection is read-only and limited to files no larger than 16 MiB; the selected file is passed to the existing metadata validator and is never executed, decrypted, or modified. This first version does not recurse into subdirectories.
+
+
+### Folder navigation update
+
+The SD browser now lists subdirectories as well as ELF/SELF files. Press A on a folder to enter it, B to return to its parent, Up/Down to select, and Y to rescan the current folder. The browser remains read-only, shows at most 24 entries per folder, and does not recurse automatically.
