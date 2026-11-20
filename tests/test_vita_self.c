@@ -68,6 +68,11 @@ int main(void) {
     put32(data + 0xc4, 0x12345678);
     assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_OK);
     assert(info.segments[0].unknown == 0x12345678);
+    put64(data + 0xc8, 0); /* encryption not requested */
+    assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_OK);
+    assert(info.segments[0].encryption == 0);
+    put64(data + 0xc8, 3);
+    assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_ERR_SEGMENT_FORMAT);
     assert(vita_self_inspect_header(data, 0x7f, &info) == VITA_SELF_ERR_TOO_SMALL);
 
     data[0] = 0;
