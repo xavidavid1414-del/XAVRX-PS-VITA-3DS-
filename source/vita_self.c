@@ -107,7 +107,7 @@ VitaSelfStatus vita_self_inspect_header(const uint8_t *data, size_t size,
             segment->length > file_size - segment->offset)
             return VITA_SELF_ERR_SEGMENT_RANGE;
         if ((segment->compression != 1u && segment->compression != 2u) ||
-            (segment->encryption != 1u && segment->encryption != 2u))
+            segment->encryption > 2u)
             return VITA_SELF_ERR_SEGMENT_FORMAT;
     }
     return VITA_SELF_OK;
