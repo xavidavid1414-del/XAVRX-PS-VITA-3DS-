@@ -15,6 +15,7 @@ static void make_header(uint8_t *elf, size_t size) {
     memset(elf, 0, size);
     elf[0] = 0x7f; elf[1] = 'E'; elf[2] = 'L'; elf[3] = 'F';
     elf[4] = 1; elf[5] = 1; elf[6] = 1;
+    put16(elf + 16, 0xfe00); /* ET_SCE_EXEC */
     put32(elf + 20, 1); put16(elf + 18, 40);
     put32(elf + 24, 0x81000000u); put16(elf + 40, 52);
 }
@@ -28,11 +29,11 @@ static void make_load_segment(uint8_t *elf) {
     put32(elf + 80, 4);       /* p_align */
 }
 int main(void) {
-    uint8_t elf[128];
+    uint8_t elf[256];
     VitaElfInfo info;
     make_header(elf, sizeof elf);
     assert(vita_elf_parse_header(elf, 52, &info) == VITA_ELF_OK);
-    assert(info.entry == 0x81000000u);
+    assert(info.entry == 0x81000000u && info.elf_type == 0xfe00u);
     assert(vita_elf_parse_header(elf, 12, &info) == VITA_ELF_ERR_TOO_SMALL);
 
     put32(elf + 28, 52); put16(elf + 42, 32); put16(elf + 44, 2);
@@ -47,12 +48,25 @@ int main(void) {
     make_load_segment(elf);
     assert(vita_elf_parse_header(elf, sizeof elf, &info) == VITA_ELF_OK);
     assert(info.load_segment_count == 1);
-    put32(elf + 56, 126); /* Segment data extends beyond EOF. */
+    put32(elf + 56, 254);
     assert(vita_elf_parse_header(elf, sizeof elf, &info) == VITA_ELF_ERR_LOAD_SEGMENT);
     make_header(elf, sizeof elf);
     make_load_segment(elf);
-    put32(elf + 68, 9); put32(elf + 72, 8); /* filesz > memsz */
+    put32(elf + 68, 9); put32(elf + 72, 8);
     assert(vita_elf_parse_header(elf, sizeof elf, &info) == VITA_ELF_ERR_LOAD_SEGMENT);
+
+    make_header(elf, sizeof elf);
+    put16(elf + 16, 2); /* Generic ELF executable, not a supported Vita type. */
+    assert(vita_elf_parse_header(elf, sizeof elf, &info) == VITA_ELF_ERR_TYPE);
+
+    make_header(elf, sizeof elf);
+    put32(elf + 28, 52); put16(elf + 42, 32); put16(elf + 44, 6);
+    assert(vita_elf_parse_header(elf, sizeof elf, &info) == VITA_ELF_ERR_VITA_LIMIT);
+
+    make_header(elf, sizeof elf);
+    put16(elf + 16, 0xfe04); /* ET_SCE_RELEXEC */
+    put32(elf + 28, 52); put16(elf + 42, 32); put16(elf + 44, 6);
+    assert(vita_elf_parse_header(elf, sizeof elf, &info) == VITA_ELF_OK);
 
     make_header(elf, sizeof elf); elf[0] = 0;
     assert(vita_elf_parse_header(elf, sizeof elf, &info) == VITA_ELF_ERR_MAGIC);
