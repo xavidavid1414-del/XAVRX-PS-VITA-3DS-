@@ -43,6 +43,25 @@ static int make_path(char *out, size_t capacity, const char *name) {
     return n >= 0 && (size_t)n < capacity;
 }
 
+static int compare_entries(const void *left, const void *right) {
+    const BrowserEntry *a = (const BrowserEntry *)left;
+    const BrowserEntry *b = (const BrowserEntry *)right;
+    const unsigned char *pa, *pb;
+    if (a->is_directory != b->is_directory)
+        return b->is_directory - a->is_directory;
+    pa = (const unsigned char *)a->name;
+    pb = (const unsigned char *)b->name;
+    while (*pa && *pb) {
+        int ca = *pa, cb = *pb;
+        if (ca >= 'A' && ca <= 'Z') ca += 'a' - 'A';
+        if (cb >= 'A' && cb <= 'Z') cb += 'a' - 'A';
+        if (ca != cb) return ca - cb;
+        ++pa;
+        ++pb;
+    }
+    return (int)*pa - (int)*pb;
+}
+
 static void scan_directory(void) {
     DIR *dir = opendir(current_dir);
     struct dirent *entry;
@@ -72,6 +91,7 @@ static void scan_directory(void) {
         ++entry_count;
     }
     closedir(dir);
+    qsort(entries, entry_count, sizeof(entries[0]), compare_entries);
     snprintf(scan_message, sizeof(scan_message), "%u item(s) in this folder", entry_count);
     snprintf(inspect_message, sizeof(inspect_message), "A: open folder or inspect ELF/SELF.");
 }
