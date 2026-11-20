@@ -78,7 +78,7 @@ int main(void) {
     put64(data + 16, 0x2000);
     assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_ERR_HEADER_RANGE);
     make_self(data, sizeof data);
-    put64(data + 64, 0x1000);
+    put64(data + 64, 0x11f0);
     assert(vita_self_inspect_header(data, sizeof data, &info) == VITA_SELF_ERR_ELF_RANGE);
     make_self(data, sizeof data);
     put64(data + 56, 0x11f8);
