@@ -1,19 +1,24 @@
-name: Build 3DS homebrew
-
+name: Build and test
 on:
   push:
   pull_request:
   workflow_dispatch:
-
 jobs:
-  build:
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test ELF parser
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -Iinclude tests/test_vita_elf.c source/vita_elf.c -o /tmp/xavrx_elf_tests
+          /tmp/xavrx_elf_tests
+  build-3ds:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitarm:latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Build
+      - uses: actions/checkout@v4
+      - name: Build 3DSX
         run: make
       - name: Upload 3DSX
         uses: actions/upload-artifact@v4
