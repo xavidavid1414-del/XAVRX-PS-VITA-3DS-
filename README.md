@@ -8,13 +8,14 @@ Experimental research project for the New Nintendo 2DS XL. This is **not a funct
 - [x] Basic top-screen status display and START-to-exit input loop
 - [x] ELF32 little-endian ARM header validation
 - [x] Program-header and section-header table bounds checks
-- [x] Host tests for valid headers and malformed/truncated tables
-- [ ] Verify 3DSX build in GitHub Actions
+- [x] PT_LOAD segment file-range, filesz/memsz, and alignment validation
+- [x] Host tests for valid headers, truncated tables, and malformed load segments
+- [x] Verify 3DSX build and host tests in GitHub Actions
 - [ ] Research documented Vita SELF container format
 - [ ] Evaluate a limited ARM instruction experiment only if hardware budget permits
 - [ ] Benchmark memory and performance constraints
 
-The parser checks ELF identification, ELF version, 32-bit class, little-endian encoding, ARM machine type, header size, and declared program/section table ranges. It reads metadata only. It does **not** decrypt SELF files, load segments, link libraries, emulate the Vita kernel, or execute Vita games.
+The parser checks ELF identification, ELF version, 32-bit class, little-endian encoding, ARM machine type, header size, declared program/section table ranges, and PT_LOAD segment file bounds, memory-size consistency, and alignment. It reads metadata only. It does **not** decrypt SELF files, load segments, link libraries, emulate the Vita kernel, or execute Vita games.
 
 ## Build on 3DS
 
