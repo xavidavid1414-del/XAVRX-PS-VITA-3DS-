@@ -16,14 +16,13 @@ int main(void) {
     assert(vita_elf_parse_header(elf, 52, &info) == VITA_ELF_OK);
     assert(info.entry == 0x81000000u);
     assert(vita_elf_parse_header(elf, 12, &info) == VITA_ELF_ERR_TOO_SMALL);
-    /* Two 32-byte program headers fit from offset 52 through byte 115. */
     put32(elf+28, 52); put16(elf+42, 32); put16(elf+44, 2);
     assert(vita_elf_parse_header(elf, 128, &info) == VITA_ELF_OK);
     assert(vita_elf_parse_header(elf, 100, &info) == VITA_ELF_ERR_PROGRAM_TABLE);
-    /* One 40-byte section header fits from offset 80 through byte 119. */
     put32(elf+32, 80); put16(elf+46, 40); put16(elf+48, 1);
     assert(vita_elf_parse_header(elf, 128, &info) == VITA_ELF_OK);
-    assert(vita_elf_parse_header(elf, 100, &info) == VITA_ELF_ERR_SECTION_TABLE);
+    /* 119 bytes fit the program table but not the section table ending at 120. */
+    assert(vita_elf_parse_header(elf, 119, &info) == VITA_ELF_ERR_SECTION_TABLE);
     make_header(elf, sizeof elf); elf[0]=0;
     assert(vita_elf_parse_header(elf, sizeof elf, &info) == VITA_ELF_ERR_MAGIC);
     puts("Vita ELF parser tests: PASS"); return 0;
