@@ -2,58 +2,76 @@
 
 Experimental research project for the New Nintendo 2DS XL. This is **not a functional PS Vita emulator**; full Vita emulation is beyond the practical capabilities of 3DS-family hardware.
 
-## Current milestone: Vita ELF and SELF header inspection
+## Current milestone: Vita ELF/SELF metadata inspector
 
 - [x] devkitPro / libctru homebrew scaffold
-- [x] Dual-screen homebrew interface with five navigable information pages
+- [x] Dual-screen interface with five navigable pages
 - [x] ELF32 little-endian ARM header validation
-- [x] Recognize Vita ET_SCE_EXEC and ET_SCE_RELEXEC executable types
-- [x] Program-header and section-header table bounds checks
-- [x] PT_LOAD segment file-range, filesz/memsz, and alignment validation
-- [x] Enforce documented Vita program-header and segment-count limits
-- [x] Inspect the public 0x80-byte SCE SELF header and validate extended offsets
-- [x] Host tests for valid headers, truncated tables, and malformed load segments
-- [x] Verify 3DSX build and host tests in GitHub Actions
-- [x] Add on-device project, ELF, SELF, SD browser, and limitations pages
-- [x] Implement a conservative Vita SELF base-header inspector
-- [ ] Evaluate a limited ARM instruction experiment only if hardware budget permits
-- [ ] Benchmark memory and performance constraints
+- [x] Recognition of Vita ET_SCE_EXEC and ET_SCE_RELEXEC types
+- [x] Program/section table bounds checks
+- [x] PT_LOAD file-range, filesz/memsz, and alignment validation
+- [x] Vita program-header and segment-count limits
+- [x] Public 0x80-byte SCE SELF header inspection
+- [x] AppInfo and segment metadata range validation
+- [x] Host tests for ELF and SELF parsers
+- [x] GitHub Actions host tests and 3DSX build
+- [x] On-device project, ELF, SELF, SD browser, and limitations pages
+- [x] Read-only SD browser with folder navigation and ELF/SELF inspection
+- [x] Stable alphabetical selection of the first 24 matching entries in large folders
 
-The parser checks ELF identification, ELF version, 32-bit class, little-endian encoding, ARM machine type, supported Vita ELF types (ET_SCE_EXEC and ET_SCE_RELEXEC), header size, declared program/section table ranges, PT_LOAD segment file bounds, memory-size consistency, alignment, and documented Vita segment-count limits. It reads metadata only. The SELF inspector validates the documented public 0x80-byte SCE header layout, including the separate header length, total SELF size, embedded-ELF offset/size, and bounds of public metadata offsets. It also reads the bounded 0x20-byte app-info record (auth ID, vendor ID, SELF type, and app version) and up to eight segment-info records, validating stored ranges, compression values (plain or zlib), and encryption-request states (0, 1, or 2). It never decompresses or decrypts segment contents, verifies signatures, or executes code. It does **not** decrypt SELF files, load segments, link libraries, emulate the Vita kernel, or execute Vita games.
+The ELF parser checks identification, version, 32-bit class, little-endian encoding, ARM machine type, supported Vita ELF types, header size, program/section table bounds, PT_LOAD file bounds, memory-size consistency, alignment, and documented Vita segment-count limits.
 
-## Build on 3DS
-
-Install devkitPro with the Nintendo 3DS development packages (3ds-dev) and run `make`. The expected output is `build/XAVRX-PS-VITA-3DS.3dsx`.
-
-## Run host parser tests
-
-With a C compiler, run `make test`.
-
-## Project rules
-
-- Never label stubs or metadata inspection as emulation.
-- Do not claim game compatibility without reproducible tests.
-- Do not include copyrighted Vita firmware, keys, or commercial game files.
-- Benchmark each subsystem on real hardware before making performance claims.
-- Document limitations and keep each milestone small and testable.
+The SELF inspector validates the public SCE header, embedded-ELF range, metadata offsets, the bounded 0x20-byte AppInfo record, and up to eight segment-info records. It validates stored ranges and recognized compression/encryption metadata values. It does not decrypt or decompress content, verify signatures, load segments, or execute code.
 
 ## On-device interface
 
-The current 3DSX opens a dual-screen information menu:
+The 3DSX opens a dual-screen menu with five pages:
 
-- **Top screen:** project status, ELF checks, SELF metadata, and implementation limits (four pages).
-- **Bottom screen:** controls and current page number.
-- **D-pad Left/Right:** move between pages.
-- **START:** exit to the Homebrew Launcher.
+1. Project status
+2. ELF inspection details
+3. SELF inspection details
+4. SD-card browser
+5. Project limitations
 
-This build is currently an information interface plus host-side metadata parsers. It does not yet browse or open files from the SD card. The next practical milestone is a read-only SD-card file browser that can pass selected ELF/SELF files to the existing validators.
+Use D-pad Left/Right to change pages. Press START to exit.
 
+### SD-card browser
 
-## SD-card file browser
+The browser lists directories and files ending in `.elf` or `.self` in the current folder.
 
-The on-device browser scans the SD-card root for up to 24 files ending in `.elf` or `.self`. Use D-pad Up/Down to select, A to inspect, and Y to rescan. Inspection is read-only and limited to files no larger than 16 MiB; the selected file is passed to the existing metadata validator and is never executed, decrypted, or modified. This first version does not recurse into subdirectories.
+- **Up/Down:** select an entry
+- **A:** enter a folder or inspect an ELF/SELF file
+- **B:** return to the parent folder
+- **Y:** rescan the current folder
 
+It scans the whole current directory, then displays at most 24 entries, prioritizing directories and sorting names alphabetically without case sensitivity. If more than 24 entries match, the interface reports the total and the number displayed. Folder navigation is manual; it does not recursively scan the entire SD card.
 
-### Folder navigation update
+Inspection is read-only and limited to files no larger than 16 MiB. Files are passed to the existing metadata validators and are never executed, decrypted, decompressed, or modified.
 
-The SD browser now lists subdirectories as well as ELF/SELF files. Press A on a folder to enter it, B to return to its parent, Up/Down to select, and Y to rescan the current folder. The browser remains read-only, shows at most 24 entries per folder, and does not recurse automatically.
+## Build on 3DS
+
+Install devkitPro with the Nintendo 3DS development packages (3ds-dev), then run:
+
+```sh
+make
+```
+
+Expected output: `build/XAVRX-PS-VITA-3DS.3dsx`.
+
+## Run host parser tests
+
+With a C compiler, run:
+
+```sh
+make test
+```
+
+## Project rules and limitations
+
+- Never describe metadata inspection as Vita emulation.
+- Do not claim game compatibility without reproducible tests.
+- Do not include copyrighted Vita firmware, keys, or commercial game files.
+- Benchmark each subsystem on real hardware before making performance claims.
+- Keep milestones small, documented, and testable.
+
+The project currently provides a 3DS homebrew interface and read-only ELF/SELF metadata inspection. It does **not** emulate the Vita CPU or GPU, provide Vita OS/kernel services, decrypt SELF files, or run Vita games.
